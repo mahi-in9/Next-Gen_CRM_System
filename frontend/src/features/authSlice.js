@@ -95,6 +95,9 @@ const authSlice = createSlice({
   },
 
   reducers: {
+    setUser: (state, action) => {
+      state.user = action.payload;
+    },
     logout: (state) => {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
@@ -105,6 +108,7 @@ const authSlice = createSlice({
       state.error = null;
     },
   },
+
   extraReducers: (builder) => {
     builder
       // LOGIN

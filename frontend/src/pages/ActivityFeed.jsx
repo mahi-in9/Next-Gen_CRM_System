@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchLeadActivities,
@@ -10,7 +10,12 @@ import { Plus, X } from "lucide-react";
 
 const ActivityFeed = ({ leadId = 1 }) => {
   const dispatch = useDispatch();
-  const { items, loading, error } = useSelector((state) => state.activities);
+  const {
+    items = [],
+    loading,
+    error,
+  } = useSelector((state) => state.activities);
+  const { user } = useSelector((state) => state.auth); // { id, name, role, teamId }
 
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [formData, setFormData] = useState({
@@ -38,6 +43,8 @@ const ActivityFeed = ({ leadId = 1 }) => {
         leadId,
         type: formData.type,
         details: formData.details.trim(),
+        userId: user?.id,
+        teamId: user?.teamId,
       })
     ).then(() => {
       setFormData({ details: "", type: "NOTE" });
@@ -47,6 +54,15 @@ const ActivityFeed = ({ leadId = 1 }) => {
 
   /* ------------------------- Edit Activity ------------------------- */
   const handleEdit = (activity) => {
+    const role = user?.role?.toLowerCase();
+    const canEdit =
+      role === "admin" ||
+      (role === "manager" && activity.teamId === user?.teamId) ||
+      (role === "sales" && activity.userId === user?.id);
+
+    if (!canEdit)
+      return alert("You don’t have permission to edit this activity.");
+
     setEditId(activity.id);
     setEditText(activity.details);
   };
@@ -64,11 +80,37 @@ const ActivityFeed = ({ leadId = 1 }) => {
   };
 
   /* ------------------------- Delete Activity ------------------------- */
-  const handleDelete = (id) => {
+  const handleDelete = (activity) => {
+    const role = user?.role?.toLowerCase();
+    const canDelete =
+      role === "admin" ||
+      (role === "manager" && activity.teamId === user?.teamId) ||
+      (role === "sales" && activity.userId === user?.id);
+
+    if (!canDelete)
+      return alert("You don’t have permission to delete this activity.");
+
     if (confirm("Delete this activity permanently?")) {
-      dispatch(deleteActivity(id));
+      dispatch(deleteActivity(activity.id));
     }
   };
+
+  /* ------------------------- Filter by Role ------------------------- */
+  const filteredActivities = useMemo(() => {
+    if (!user) return [];
+    const role = user.role?.toLowerCase();
+
+    switch (role) {
+      case "admin":
+        return items;
+      case "manager":
+        return items.filter((a) => a.teamId === user.teamId);
+      case "sales":
+        return items.filter((a) => a.userId === user.id);
+      default:
+        return [];
+    }
+  }, [items, user]);
 
   /* ------------------------- Refresh ------------------------- */
   const handleRefresh = () => {
@@ -101,12 +143,14 @@ const ActivityFeed = ({ leadId = 1 }) => {
           <p className="text-red-500 text-sm text-center mb-3">{error}</p>
         )}
 
-        {!loading && !error && items.length === 0 && (
-          <p className="text-gray-500 italic text-center">No activities yet.</p>
+        {!loading && !error && filteredActivities.length === 0 && (
+          <p className="text-gray-500 italic text-center">
+            No activities found for your role.
+          </p>
         )}
 
         <ul className="space-y-4">
-          {items.map((activity) => (
+          {filteredActivities.map((activity) => (
             <li
               key={activity.id}
               className="group border border-gray-200 bg-gray-50 rounded-lg p-4 hover:shadow-sm transition"
@@ -147,7 +191,7 @@ const ActivityFeed = ({ leadId = 1 }) => {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(activity.id)}
+                        onClick={() => handleDelete(activity)}
                         className="text-red-600 text-sm hover:underline"
                       >
                         Delete

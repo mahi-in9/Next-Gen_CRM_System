@@ -7,7 +7,7 @@ import {
   getUserLeads,
   getUserActivities,
 } from "../controllers/userController.js";
-import { auth } from "../middlewares/authMiddleware.js";
+import { auth, authorize } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
@@ -18,7 +18,6 @@ router.put("/:id", updateUser);
 router.delete("/:id", deleteUser);
 router.get("/:id/leads", getUserLeads);
 router.get("/:id/activities", getUserActivities);
-
 
 router.get("/", getAllUsers);
 

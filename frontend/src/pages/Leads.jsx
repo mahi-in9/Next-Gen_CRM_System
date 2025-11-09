@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchLeads,
@@ -9,7 +9,12 @@ import {
 
 const Leads = () => {
   const dispatch = useDispatch();
-  const { list: leads, loading, error } = useSelector((state) => state.leads);
+  const {
+    list: leads = [],
+    loading,
+    error,
+  } = useSelector((state) => state.leads);
+  const { user } = useSelector((state) => state.auth); // user: { id, name, role, teamId }
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -22,33 +27,55 @@ const Leads = () => {
     stage: "new",
   });
 
-  /* ------------------- Fetch leads on load ------------------- */
   useEffect(() => {
     dispatch(fetchLeads());
   }, [dispatch]);
 
-  /* ------------------- Input change handler ------------------- */
   const handleChange = (e) => {
     setLeadForm({ ...leadForm, [e.target.name]: e.target.value });
   };
 
-  /* ------------------- Add Lead ------------------- */
   const handleAddLead = async (e) => {
     e.preventDefault();
-    await dispatch(createLead(leadForm));
+    if (!user) return alert("User not authenticated.");
+    const newLead = {
+      ...leadForm,
+      ownerId: user.id,
+      teamId: user.teamId,
+      ownerName: user.name,
+    };
+    await dispatch(createLead(newLead));
     setLeadForm({ name: "", email: "", phone: "", stage: "new" });
     setIsAddModalOpen(false);
   };
 
-  /* ------------------- Delete Lead ------------------- */
-  const handleDeleteLead = (id) => {
+  const handleDeleteLead = (lead) => {
+    if (!user) return alert("User not authenticated.");
+
+    const role = user.role?.toLowerCase();
+    const canDelete =
+      role === "admin" ||
+      (role === "manager" && lead.teamId === user.teamId) ||
+      (role === "sales" && lead.ownerId === user.id);
+
+    if (!canDelete)
+      return alert("You don’t have permission to delete this lead.");
     if (window.confirm("Are you sure you want to delete this lead?")) {
-      dispatch(deleteLead(id));
+      dispatch(deleteLead(lead.id));
     }
   };
 
-  /* ------------------- Open Edit Modal ------------------- */
   const handleEditLead = (lead) => {
+    if (!user) return alert("User not authenticated.");
+
+    const role = user.role?.toLowerCase();
+    const canEdit =
+      role === "admin" ||
+      (role === "manager" && lead.teamId === user.teamId) ||
+      (role === "sales" && lead.ownerId === user.id);
+
+    if (!canEdit) return alert("You don’t have permission to edit this lead.");
+
     setSelectedLead(lead);
     setLeadForm({
       name: lead.name,
@@ -59,7 +86,6 @@ const Leads = () => {
     setIsEditModalOpen(true);
   };
 
-  /* ------------------- Submit Edit ------------------- */
   const handleUpdateLead = async (e) => {
     e.preventDefault();
     await dispatch(updateLead({ id: selectedLead.id, updates: leadForm }));
@@ -67,10 +93,23 @@ const Leads = () => {
     setSelectedLead(null);
   };
 
+  // ✅ Reliable filtering
+  const filteredLeads = useMemo(() => {
+    if (!user || !user.role) return [];
+    const role = user.role.toLowerCase();
+    console.log("Filtering leads for role:", role);
+
+    if (role === "admin") return leads;
+    if (role === "manager")
+      return leads.filter((lead) => lead.teamId === user.teamId);
+    if (role === "sales")
+      return leads.filter((lead) => lead.ownerId === user.id);
+    return [];
+  }, [leads, user]);
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-semibold text-gray-800">Leads</h1>
           <button
@@ -81,19 +120,16 @@ const Leads = () => {
           </button>
         </div>
 
-        {/* Loading State */}
         {loading && <p className="text-gray-600">Loading leads...</p>}
-
-        {/* Error State */}
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
-        {/* Empty State */}
-        {!loading && leads.length === 0 && (
-          <p className="text-gray-500 italic">No leads available.</p>
+        {!loading && filteredLeads.length === 0 && (
+          <p className="text-gray-500 italic">
+            No leads available for your role.
+          </p>
         )}
 
-        {/* Leads Table */}
-        {!loading && leads.length > 0 && (
+        {!loading && filteredLeads.length > 0 && (
           <div className="overflow-x-auto bg-white shadow-md rounded-xl">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-100">
@@ -110,13 +146,16 @@ const Leads = () => {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Stage
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Owner
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {leads.map((lead) => (
+                {filteredLeads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4 whitespace-nowrap text-gray-800 font-medium">
                       {lead.name}
@@ -142,6 +181,9 @@ const Leads = () => {
                         {lead.stage}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      {lead.ownerName || "Unassigned"}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right space-x-4">
                       <button
                         onClick={() => handleEditLead(lead)}
@@ -150,7 +192,7 @@ const Leads = () => {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeleteLead(lead.id)}
+                        onClick={() => handleDeleteLead(lead)}
                         className="text-red-600 hover:text-red-800 font-medium"
                       >
                         Delete
@@ -164,7 +206,6 @@ const Leads = () => {
         )}
       </div>
 
-      {/* Add Lead Modal */}
       {isAddModalOpen && (
         <Modal
           title="Add New Lead"
@@ -175,7 +216,6 @@ const Leads = () => {
         />
       )}
 
-      {/* Edit Lead Modal */}
       {isEditModalOpen && (
         <Modal
           title="Edit Lead"
@@ -190,78 +230,75 @@ const Leads = () => {
 };
 
 /* =======================================================
-   🧩 Reusable Modal Component
+   Modal
 ======================================================= */
-const Modal = ({ title, form, onChange, onSubmit, onClose }) => {
-  return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">{title}</h2>
-        <form onSubmit={onSubmit}>
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            value={form.name}
-            onChange={onChange}
-            className="w-full border border-gray-300 p-3 rounded-md mb-3 focus:ring focus:ring-indigo-200"
-            required
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email Address"
-            value={form.email}
-            onChange={onChange}
-            className="w-full border border-gray-300 p-3 rounded-md mb-3 focus:ring focus:ring-indigo-200"
-          />
-          <input
-            type="text"
-            name="phone"
-            placeholder="Phone Number"
-            value={form.phone}
-            onChange={onChange}
-            className="w-full border border-gray-300 p-3 rounded-md mb-3 focus:ring focus:ring-indigo-200"
-          />
-          <select
-            name="stage"
-            value={form.stage}
-            onChange={onChange}
-            className="w-full border border-gray-300 p-3 rounded-md mb-4 focus:ring focus:ring-indigo-200"
-          >
-            <option value="new">New</option>
-            <option value="contacted">Contacted</option>
-            <option value="qualified">Qualified</option>
-            <option value="closed">Closed</option>
-          </select>
-
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition"
-            >
-              Save
-            </button>
-          </div>
-        </form>
-
-        {/* Close Icon */}
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-lg"
+const Modal = ({ title, form, onChange, onSubmit, onClose }) => (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+    <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
+      <h2 className="text-xl font-semibold mb-4 text-gray-800">{title}</h2>
+      <form onSubmit={onSubmit}>
+        <input
+          type="text"
+          name="name"
+          placeholder="Full Name"
+          value={form.name}
+          onChange={onChange}
+          className="w-full border border-gray-300 p-3 rounded-md mb-3 focus:ring focus:ring-indigo-200"
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email Address"
+          value={form.email}
+          onChange={onChange}
+          className="w-full border border-gray-300 p-3 rounded-md mb-3 focus:ring focus:ring-indigo-200"
+        />
+        <input
+          type="text"
+          name="phone"
+          placeholder="Phone Number"
+          value={form.phone}
+          onChange={onChange}
+          className="w-full border border-gray-300 p-3 rounded-md mb-3 focus:ring focus:ring-indigo-200"
+        />
+        <select
+          name="stage"
+          value={form.stage}
+          onChange={onChange}
+          className="w-full border border-gray-300 p-3 rounded-md mb-4 focus:ring focus:ring-indigo-200"
         >
-          ×
-        </button>
-      </div>
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="qualified">Qualified</option>
+          <option value="closed">Closed</option>
+        </select>
+
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+
+      <button
+        onClick={onClose}
+        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-lg"
+      >
+        ×
+      </button>
     </div>
-  );
-};
+  </div>
+);
 
 export default Leads;

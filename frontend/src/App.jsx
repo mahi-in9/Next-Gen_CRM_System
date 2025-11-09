@@ -11,6 +11,7 @@ import { loadUserFromToken } from "./features/authSlice";
 import Loader from "./components/Loader";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
+import UserList from "./pages/UserList";
 
 // Lazy loaded pages for better performance
 const LandingPage = lazy(() => import("./pages/Home"));
@@ -54,7 +55,7 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES_EXEC"]}>
+              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
                 <AnalyticsDashboard />
               </ProtectedRoute>
             }
@@ -63,7 +64,7 @@ function App() {
           <Route
             path="/leads"
             element={
-              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES_EXEC"]}>
+              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
                 <Leads />
               </ProtectedRoute>
             }
@@ -72,7 +73,7 @@ function App() {
           <Route
             path="/activities"
             element={
-              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES_EXEC"]}>
+              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
                 <ActivityFeed />
               </ProtectedRoute>
             }
@@ -81,13 +82,23 @@ function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES_EXEC"]}>
+              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
                 <Profile />
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <UserList />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Error / Fallback Routes */}
+          {/* <Route path="/users" element={<UserList />} /> */}
+
+          {/* Error / Fallback Rhoutes */}
           {/* <Route path="/unauthorized" element={<Unauthorized />} /> */}
           <Route path="*" element={<NotFound />} />
         </Routes>

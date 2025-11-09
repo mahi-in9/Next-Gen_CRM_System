@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Bell, Menu, X, UserCircle2 } from "lucide-react"; // using lucide icons
+import { useDispatch } from "react-redux";
+import { logout } from "../features/authSlice";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifications] = useState(3); // Replace with real data from Redux slice later
+  const dispatch = useDispatch();
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
+    dispatch(logout()); // ✅ clear Redux + localStorage + axios headers
     navigate("/login");
   };
-
   const navLinks = [
     { path: "/", label: "Home" },
     { path: "/dashboard", label: "Dashboard" },
@@ -26,7 +28,7 @@ const Navbar = () => {
         {/* Main Flex */}
         <div className="flex justify-between items-center h-16">
           {/* Brand */}
-          
+
           <Link
             to="/"
             className="text-2xl font-bold text-indigo-600 tracking-tight"
