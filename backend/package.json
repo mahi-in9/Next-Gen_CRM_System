@@ -7,14 +7,12 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-     "build": "npx prisma generate",
+    "build": "npx prisma generate",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:studio": "npx prisma studio",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "prisma": {
-    "seed": "node prisma/seed.js"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "npx prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
