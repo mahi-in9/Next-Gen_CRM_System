@@ -1,3 +1,4 @@
+// src/features/authSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../api/axiosInstance";
 
@@ -47,7 +48,7 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-// Refresh Token
+// Refresh
 export const refreshAccessToken = createAsyncThunk(
   "auth/refreshAccessToken",
   async (_, { rejectWithValue }) => {
@@ -64,21 +65,43 @@ export const refreshAccessToken = createAsyncThunk(
       ] = `Bearer ${accessToken}`;
 
       return accessToken;
-    } catch (err) {
+    } catch {
       return rejectWithValue("Token refresh failed");
     }
   }
 );
 
+/* ------------------------- Helpers ------------------------- */
+
+const decodeBase64Url = (str) => {
+  str = str.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = str.length % 4;
+  if (pad) str += "=".repeat(4 - pad);
+  return atob(str);
+};
+
+/* ------------------------- Token Loader ------------------------- */
+
 export const loadUserFromToken = () => (dispatch) => {
-  const token = localStorage.getItem("accessToken");
-  if (!token) return;
+  dispatch(setLoading(true));
   try {
-    const userData = JSON.parse(atob(token.split(".")[1])); // Decode JWT payload
-    dispatch(authSlice.actions.setUser({ ...userData, token }));
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      dispatch(setLoading(false));
+      return;
+    }
+    const parts = token.split(".");
+    if (parts.length !== 3) throw new Error("Invalid JWT");
+
+    const payload = JSON.parse(decodeBase64Url(parts[1]));
+    if (!payload || !payload.role) throw new Error("Missing user info");
+
+    dispatch(setUser({ ...payload, token }));
   } catch (err) {
-    console.error("Invalid token", err);
-    localStorage.removeItem("accessToken");
+    console.error("Token decode failed:", err.message);
+    dispatch(logout());
+  } finally {
+    dispatch(setLoading(false));
   }
 };
 
@@ -93,10 +116,13 @@ const authSlice = createSlice({
     accessToken: localStorage.getItem("accessToken") || null,
     refreshToken: localStorage.getItem("refreshToken") || null,
   },
-
   reducers: {
     setUser: (state, action) => {
       state.user = action.payload;
+      state.loading = false;
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload;
     },
     logout: (state) => {
       localStorage.removeItem("accessToken");
@@ -106,19 +132,18 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.error = null;
+      state.loading = false;
     },
   },
-
   extraReducers: (builder) => {
     builder
-      // LOGIN
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user; // ✅ Only user object
+        state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
       })
@@ -126,14 +151,13 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // REGISTER
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user; // ✅ Only user object
+        state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
       })
@@ -141,12 +165,11 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // REFRESH
       .addCase(refreshAccessToken.fulfilled, (state, action) => {
         state.accessToken = action.payload;
       });
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, setUser, setLoading } = authSlice.actions;
 export default authSlice.reducer;
