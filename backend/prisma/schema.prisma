@@ -1,0 +1,120 @@
+// ===============================
+// Prisma Configuration
+// ===============================
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===============================
+// User Model
+// ===============================
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+  role     String @default("SALES")
+
+  // Relations
+  leads         Lead[]
+  activities    Activity[]     @relation("UserActivities")
+  notifications Notification[]
+  leadHistories LeadHistory[]  @relation("ChangedByUser")
+  refreshTokens RefreshToken[] // ✅ added missing relation
+
+  @@map("users")
+}
+
+// ===============================
+// Lead Model
+// ===============================
+model Lead {
+  id      Int     @id @default(autoincrement())
+  name    String
+  email   String?
+  phone   String?
+  stage   String  @default("new")
+  ownerId Int
+
+  // Relations
+  owner      User          @relation(fields: [ownerId], references: [id])
+  activities Activity[]
+  history    LeadHistory[] @relation("LeadHistoryRelation")
+
+  @@map("leads")
+}
+
+// ===============================
+// Activity Model
+// ===============================
+model Activity {
+  id        Int      @id @default(autoincrement())
+  leadId    Int
+  userId    Int
+  details   String
+  type      String
+  createdAt DateTime @default(now())
+
+  // Relations
+  lead Lead @relation(fields: [leadId], references: [id])
+  user User @relation("UserActivities", fields: [userId], references: [id])
+
+  @@map("activities")
+}
+
+// ===============================
+// Lead History Model
+// ===============================
+model LeadHistory {
+  id        Int      @id @default(autoincrement())
+  leadId    Int
+  changedBy Int
+  field     String
+  oldValue  String
+  newValue  String
+  timeStamp DateTime @default(now())
+
+  // Relations
+  lead Lead @relation("LeadHistoryRelation", fields: [leadId], references: [id])
+  user User @relation("ChangedByUser", fields: [changedBy], references: [id])
+
+  @@map("lead_histories")
+}
+
+// ===============================
+// Notification Model
+// ===============================
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// ===============================
+// Refresh Token Model
+// ===============================
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("refresh_tokens")
+}

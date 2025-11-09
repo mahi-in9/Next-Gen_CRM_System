@@ -1,0 +1,19 @@
+import { defineConfig } from "@prisma/config";
+import { spawn } from "child_process";
+
+export default defineConfig({
+  schema: "./prisma/schema.prisma",
+  seeding: {
+    async run() {
+      console.log("⚙️  Running seed script...");
+      const seed = spawn("node", ["./prisma/seed.js"], { stdio: "inherit" });
+
+      await new Promise((resolve, reject) => {
+        seed.on("close", (code) => {
+          if (code === 0) resolve(null);
+          else reject(new Error(`❌ Seed failed with exit code ${code}`));
+        });
+      });
+    },
+  },
+});
