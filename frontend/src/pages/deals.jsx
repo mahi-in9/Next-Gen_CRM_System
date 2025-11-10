@@ -169,7 +169,7 @@ export default function Deals() {
                 key={stage}
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(stage)}
-                className="flex-shrink-0 w-72 bg-white rounded-lg border shadow-sm"
+                className="shrink-0 w-72 bg-white rounded-lg border shadow-sm"
               >
                 <div className="flex justify-between items-center px-4 py-3 border-b">
                   <h3 className="text-sm font-semibold text-gray-700">

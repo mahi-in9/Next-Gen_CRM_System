@@ -19,7 +19,7 @@ const LandingPage = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Deals = lazy(() => import("./pages/Deals"));
+const Deals = lazy(() => import("./pages/deals"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const Contacts = lazy(() => import("./pages/Contact"));
 const Notifications = lazy(() => import("./pages/Notification"));
