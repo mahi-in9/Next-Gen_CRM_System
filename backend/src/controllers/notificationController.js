@@ -1,156 +1,140 @@
+// src/controllers/notification.controller.js
 import prisma from "../models/prismaClient.js";
 
-/* ===========================================================
-   Notification Controller — Production Ready
-   =========================================================== */
+/* ============================================================
+   📩 Notification Controller
+============================================================ */
 
 /**
- * @desc Get all notifications for the logged-in user
- * @route GET /api/v1/notifications
- * @access Private (User-specific)
+ * @desc Get all notifications for a specific user
+ * @route GET /api/notifications
+ * @access Private (Authenticated User)
  */
-export const getUserNotifications = async (req, res) => {
+export const getNotifications = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { page = 1, limit = 10, read } = req.query;
-
-    const filters = { userId };
-    if (read !== undefined) filters.read = read === "true";
+    const userId = req.user?.id; // ✅ from auth middleware
+    if (!userId) return res.status(401).json({ message: "Unauthorized user." });
 
     const notifications = await prisma.notification.findMany({
-      where: filters,
+      where: { userId },
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * limit,
-      take: parseInt(limit),
     });
 
-    const total = await prisma.notification.count({ where: filters });
-
-    res.status(200).json({
-      success: true,
-      data: notifications,
-      pagination: {
-        total,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(total / limit),
-      },
-    });
+    res.status(200).json({ count: notifications.length, notifications });
   } catch (error) {
-    console.error("Error fetching notifications:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("❌ getNotifications:", error);
+    res
+      .status(500)
+      .json({ message: "Server error while fetching notifications." });
   }
 };
 
 /**
- * @desc Mark a single notification as read/unread
- * @route PATCH /api/v1/notifications/:id
- * @access Private
+ * @desc Create a new notification for a user
+ * @route POST /api/notifications
+ * @access Private (System or Authenticated user)
  */
-export const updateNotificationStatus = async (req, res) => {
+export const createNotification = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { id } = req.params;
-    const { read } = req.body;
+    const { userId, type, message } = req.body;
+    if (!userId || !type || !message)
+      return res
+        .status(400)
+        .json({ message: "All fields (userId, type, message) are required." });
 
-    const notification = await prisma.notification.findUnique({
-      where: { id: Number(id) },
+    const notification = await prisma.notification.create({
+      data: { userId, type, message },
     });
 
-    if (!notification || notification.userId !== userId) {
+    res.status(201).json(notification);
+  } catch (error) {
+    console.error("❌ createNotification:", error);
+    res
+      .status(500)
+      .json({ message: "Server error while creating notification." });
+  }
+};
+
+/**
+ * @desc Mark a specific notification as read
+ * @route PATCH /api/notifications/:id/read
+ * @access Private
+ */
+export const markAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    const existing = await prisma.notification.findUnique({
+      where: { id: Number(id) },
+    });
+    if (!existing)
+      return res.status(404).json({ message: "Notification not found." });
+    if (existing.userId !== userId)
       return res
-        .status(404)
-        .json({ success: false, message: "Notification not found" });
-    }
+        .status(403)
+        .json({ message: "Unauthorized access to this notification." });
 
     const updated = await prisma.notification.update({
       where: { id: Number(id) },
-      data: { read: !!read },
+      data: { read: true },
     });
 
-    res.status(200).json({ success: true, data: updated });
+    res.status(200).json(updated);
   } catch (error) {
-    console.error("Error updating notification:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("❌ markAsRead:", error);
+    res.status(500).json({ message: "Server error while marking as read." });
   }
 };
 
 /**
- * @desc Mark all notifications as read
- * @route PATCH /api/v1/notifications/mark-all-read
+ * @desc Mark all notifications as read for logged-in user
+ * @route PATCH /api/notifications/mark-all-read
  * @access Private
  */
 export const markAllAsRead = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
 
     await prisma.notification.updateMany({
       where: { userId, read: false },
       data: { read: true },
     });
 
-    res
-      .status(200)
-      .json({ success: true, message: "All notifications marked as read" });
+    res.status(200).json({ message: "All notifications marked as read." });
   } catch (error) {
-    console.error("Error marking all notifications as read:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("❌ markAllAsRead:", error);
+    res
+      .status(500)
+      .json({ message: "Server error while updating notifications." });
   }
 };
 
 /**
  * @desc Delete a notification
- * @route DELETE /api/v1/notifications/:id
+ * @route DELETE /api/notifications/:id
  * @access Private
  */
 export const deleteNotification = async (req, res) => {
   try {
-    const userId = req.user.id;
     const { id } = req.params;
+    const userId = req.user?.id;
 
     const notification = await prisma.notification.findUnique({
       where: { id: Number(id) },
     });
 
-    if (!notification || notification.userId !== userId) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Notification not found" });
-    }
+    if (!notification)
+      return res.status(404).json({ message: "Notification not found." });
+    if (notification.userId !== userId)
+      return res.status(403).json({ message: "Unauthorized action." });
 
     await prisma.notification.delete({ where: { id: Number(id) } });
-
+    res.status(200).json({ message: "Notification deleted successfully." });
+  } catch (error) {
+    console.error("❌ deleteNotification:", error);
     res
-      .status(200)
-      .json({ success: true, message: "Notification deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting notification:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-/**
- * @desc Admin — Create notification manually (optional utility)
- * @route POST /api/v1/notifications
- * @access Admin
- */
-export const createNotification = async (req, res) => {
-  try {
-    const { userId, type, message } = req.body;
-
-    if (!userId || !type || !message) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing required fields" });
-    }
-
-    const notification = await prisma.notification.create({
-      data: { userId: Number(userId), type, message },
-    });
-
-    res.status(201).json({ success: true, data: notification });
-  } catch (error) {
-    console.error("Error creating notification:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+      .status(500)
+      .json({ message: "Server error while deleting notification." });
   }
 };

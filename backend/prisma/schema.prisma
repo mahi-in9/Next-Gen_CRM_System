@@ -1,6 +1,3 @@
-// ===============================
-// Prisma Configuration
-// ===============================
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,85 +7,116 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ===============================
-// User Model
-// ===============================
 model User {
-  id       Int    @id @default(autoincrement())
-  name     String
-  email    String @unique
-  password String
-  role     String @default("SALES")
-
-  // Relations
-  leads         Lead[]
-  activities    Activity[]     @relation("UserActivities")
-  notifications Notification[]
-  leadHistories LeadHistory[]  @relation("ChangedByUser")
-  refreshTokens RefreshToken[] // ✅ added missing relation
+  id                Int              @id @default(autoincrement())
+  name              String
+  email             String           @unique
+  password          String
+  role              String           @default("SALES")
+  activities        Activity[]       @relation("UserActivities")
+  contact_histories ContactHistory[]
+  contacts          Contact[]
+  deals             Deal[]
+  lead_histories    lead_histories[]
+  leads             leads[]
+  notifications     Notification[]
+  refreshTokens     RefreshToken[]
+  system_history    system_history[]
+  tasks             Task[]
 
   @@map("users")
 }
 
-// ===============================
-// Lead Model
-// ===============================
-model Lead {
-  id      Int     @id @default(autoincrement())
-  name    String
-  email   String?
-  phone   String?
-  stage   String  @default("new")
-  ownerId Int
+model Contact {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String
+  email             String?
+  phone             String?
+  company           String?
+  position          String?
+  notes             String?
+  ownerid           Int
+  createdat         DateTime         @default(now()) @db.Timestamp(6)
+  updatedat         DateTime         @default(now()) @db.Timestamp(6)
+  contact_histories ContactHistory[]
+  users             User             @relation(fields: [ownerid], references: [id])
+  deals             Deal[]
+  tasks             Task[]
 
-  // Relations
-  owner      User          @relation(fields: [ownerId], references: [id])
-  activities Activity[]
-  history    LeadHistory[] @relation("LeadHistoryRelation")
-
-  @@map("leads")
+  @@index([ownerid])
+  @@map("contacts")
 }
 
-// ===============================
-// Activity Model
-// ===============================
+model Deal {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  value       Int
+  stage       DealStage
+  contactid   String?   @db.Uuid
+  description String?
+  createdat   DateTime  @default(now()) @db.Timestamp(6)
+  updatedat   DateTime  @default(now()) @db.Timestamp(6)
+  ownerid     Int?
+  contacts    Contact?  @relation(fields: [contactid], references: [id])
+  users       User?     @relation(fields: [ownerid], references: [id])
+  tasks       Task[]
+
+  @@index([contactid])
+  @@index([ownerid])
+  @@map("deals")
+}
+
+model Task {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  description String?
+  priority    TaskPriority
+  status      TaskStatus
+  duedate     DateTime?    @db.Timestamp(6)
+  contactid   String?      @db.Uuid
+  dealid      String?      @db.Uuid
+  ownerid     Int?
+  createdat   DateTime     @default(now()) @db.Timestamp(6)
+  updatedat   DateTime     @default(now()) @db.Timestamp(6)
+  contacts    Contact?     @relation(fields: [contactid], references: [id])
+  deals       Deal?        @relation(fields: [dealid], references: [id])
+  users       User?        @relation(fields: [ownerid], references: [id])
+
+  @@index([contactid])
+  @@index([dealid])
+  @@index([ownerid])
+  @@map("tasks")
+}
+
 model Activity {
-  id        Int      @id @default(autoincrement())
+  id        Int          @id @default(autoincrement())
   leadId    Int
   userId    Int
   details   String
-  type      String
-  createdAt DateTime @default(now())
-
-  // Relations
-  lead Lead @relation(fields: [leadId], references: [id])
-  user User @relation("UserActivities", fields: [userId], references: [id])
+  type      ActivityType
+  createdAt DateTime     @default(now())
+  leads     leads        @relation(fields: [leadId], references: [id])
+  user      User         @relation("UserActivities", fields: [userId], references: [id])
 
   @@map("activities")
 }
 
-// ===============================
-// Lead History Model
-// ===============================
-model LeadHistory {
+model ContactHistory {
   id        Int      @id @default(autoincrement())
-  leadId    Int
-  changedBy Int
+  contactid String   @db.Uuid
+  changedby Int
   field     String
-  oldValue  String
-  newValue  String
-  timeStamp DateTime @default(now())
+  oldvalue  String?
+  newvalue  String?
+  timestamp DateTime @default(now()) @db.Timestamp(6)
+  users     User     @relation(fields: [changedby], references: [id], onDelete: Cascade)
+  contacts  Contact  @relation(fields: [contactid], references: [id], onDelete: Cascade)
 
-  // Relations
-  lead Lead @relation("LeadHistoryRelation", fields: [leadId], references: [id])
-  user User @relation("ChangedByUser", fields: [changedBy], references: [id])
-
-  @@map("lead_histories")
+  @@index([changedby])
+  @@index([contactid])
+  @@map("contact_histories")
 }
 
-// ===============================
-// Notification Model
-// ===============================
 model Notification {
   id        Int      @id @default(autoincrement())
   userId    Int
@@ -96,25 +124,85 @@ model Notification {
   message   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@map("notifications")
 }
 
-// ===============================
-// Refresh Token Model
-// ===============================
 model RefreshToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
   userId    Int
   createdAt DateTime @default(now())
   expiresAt DateTime
-
-  // Relations
-  user User @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@map("refresh_tokens")
+}
+
+model lead_histories {
+  id        Int      @id @default(autoincrement())
+  leadId    Int
+  changedBy Int
+  field     String
+  oldValue  String
+  newValue  String
+  timeStamp DateTime @default(now())
+  users     User     @relation(fields: [changedBy], references: [id])
+  leads     leads    @relation(fields: [leadId], references: [id])
+}
+
+model leads {
+  id             Int              @id @default(autoincrement())
+  name           String
+  email          String?
+  phone          String?
+  stage          String           @default("new")
+  ownerId        Int
+  activities     Activity[]
+  lead_histories lead_histories[]
+  users          User             @relation(fields: [ownerId], references: [id])
+}
+
+model system_history {
+  id          Int      @id @default(autoincrement())
+  userid      Int?
+  action      String
+  entitytype  String?
+  entityid    String?
+  description String
+  ipaddress   String?
+  useragent   String?
+  createdat   DateTime @default(now()) @db.Timestamp(6)
+  users       User?    @relation(fields: [userid], references: [id], onUpdate: NoAction)
+
+  @@index([userid])
+}
+
+enum DealStage {
+  Lead
+  Qualified
+  Proposal
+  Negotiation
+  Closed_Won
+  Closed_Lost
+}
+
+enum TaskPriority {
+  Low
+  Medium
+  High
+}
+
+enum TaskStatus {
+  To_Do
+  In_Progress
+  Completed
+}
+
+enum ActivityType {
+  Note
+  Email
+  Call
+  Meeting
 }

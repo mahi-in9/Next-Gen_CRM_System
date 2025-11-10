@@ -11,24 +11,33 @@ import { loadUserFromToken } from "./features/authSlice";
 import Loader from "./components/Loader";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
-import UserList from "./pages/UserList";
 
-// Lazy loaded pages for better performance
+/* =========================================================
+   📦 Lazy-loaded Pages (Performance Optimized)
+========================================================= */
 const LandingPage = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Deals = lazy(() => import("./pages/Deals"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const Contacts = lazy(() => import("./pages/Contact"));
+const Notifications = lazy(() => import("./pages/Notification"));
 const Profile = lazy(() => import("./pages/Profile"));
-const Leads = lazy(() => import("./pages/Leads"));
-const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard"));
+const UserList = lazy(() => import("./pages/UserList"));
+const HistoryPage = lazy(() => import("./pages/History"));
 const ActivityFeed = lazy(() => import("./pages/ActivityFeed"));
-// const Unauthorized = lazy(() => import("./pages/Error/Unauthorized"));
 const NotFound = lazy(() => import("./pages/Error/NotFound"));
+// const Unauthorized = lazy(() => import("./pages/Error/Unauthorized")); // optional
 
+/* =========================================================
+   ⚙️ Main Application Component
+========================================================= */
 function App() {
   const dispatch = useDispatch();
   const { user, loading } = useSelector((state) => state.auth);
 
-  // Persist login on refresh using token
+  // ✅ Persist login on refresh
   useEffect(() => {
     dispatch(loadUserFromToken());
   }, [dispatch]);
@@ -36,11 +45,13 @@ function App() {
   if (loading) return <Loader />;
 
   return (
-    <>
-      {user && <Navbar />} {/* Navbar visible only for authenticated users */}
+    <Router>
+      {/* Navbar visible only after authentication */}
+      {user && <Navbar />}
+
       <Suspense fallback={<Loader />}>
         <Routes>
-          {/* Public Routes */}
+          {/* ======================== PUBLIC ROUTES ======================== */}
           <Route path="/" element={<LandingPage />} />
           <Route
             path="/login"
@@ -51,21 +62,57 @@ function App() {
             element={!user ? <Signup /> : <Navigate to="/dashboard" replace />}
           />
 
-          {/* Protected Routes */}
+          {/* ======================== PROTECTED ROUTES ======================== */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
-                <AnalyticsDashboard />
+                <Dashboard />
               </ProtectedRoute>
             }
           />
 
           <Route
-            path="/leads"
+            path="/deals"
             element={
               <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
-                <Leads />
+                <Deals />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
+                <Tasks />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/contacts"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
+                <Contacts />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
+                <Notifications />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/system-history"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "SALES"]}>
+                <HistoryPage />
               </ProtectedRoute>
             }
           />
@@ -87,6 +134,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* 🔒 ADMIN-ONLY */}
           <Route
             path="/users"
             element={
@@ -96,14 +145,12 @@ function App() {
             }
           />
 
-          {/* <Route path="/users" element={<UserList />} /> */}
-
-          {/* Error / Fallback Rhoutes */}
+          {/* ======================== ERROR / FALLBACK ROUTES ======================== */}
           {/* <Route path="/unauthorized" element={<Unauthorized />} /> */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
-    </>
+    </Router>
   );
 }
 

@@ -2,14 +2,14 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../api/axiosInstance";
 
 /* =======================================================
-   🎯 Async Thunk — Fetch Analytics Overview
+   🎯 Fetch Analytics Overview
 ======================================================= */
 export const fetchAnalyticsOverview = createAsyncThunk(
   "analytics/fetchOverview",
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await axiosInstance.get("/analytics");
-      return data; // Contains summary, leadsByStage, topPerformers, recentHistories
+      return data; // { summary, dealsByStage, topPerformers, recentHistories }
     } catch (error) {
       console.error("❌ Analytics Fetch Error:", error);
       return rejectWithValue(
@@ -20,18 +20,18 @@ export const fetchAnalyticsOverview = createAsyncThunk(
 );
 
 /* =======================================================
-   🧩 Slice Definition
+   🧩 Slice
 ======================================================= */
 const analyticsSlice = createSlice({
   name: "analytics",
   initialState: {
     summary: {
-      totalLeads: 0,
+      totalDeals: 0,
       totalUsers: 0,
-      totalActivities: 0,
-      totalHistories: 0,
+      totalTasks: 0,
+      totalSystemLogs: 0,
     },
-    leadsByStage: [],
+    dealsByStage: [],
     topPerformers: [],
     recentHistories: [],
     loading: false,
@@ -40,12 +40,12 @@ const analyticsSlice = createSlice({
   reducers: {
     clearAnalyticsState: (state) => {
       state.summary = {
-        totalLeads: 0,
+        totalDeals: 0,
         totalUsers: 0,
-        totalActivities: 0,
-        totalHistories: 0,
+        totalTasks: 0,
+        totalSystemLogs: 0,
       };
-      state.leadsByStage = [];
+      state.dealsByStage = [];
       state.topPerformers = [];
       state.recentHistories = [];
       state.loading = false;
@@ -54,7 +54,6 @@ const analyticsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // ---------------- Fetch Analytics ----------------
       .addCase(fetchAnalyticsOverview.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -62,7 +61,7 @@ const analyticsSlice = createSlice({
       .addCase(fetchAnalyticsOverview.fulfilled, (state, action) => {
         state.loading = false;
         state.summary = action.payload.summary || {};
-        state.leadsByStage = action.payload.leadsByStage || [];
+        state.dealsByStage = action.payload.dealsByStage || [];
         state.topPerformers = action.payload.topPerformers || [];
         state.recentHistories = action.payload.recentHistories || [];
       })

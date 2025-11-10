@@ -8,6 +8,11 @@ import userRoutes from "./routes/userRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import historyRoutes from "./routes/historyRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import dealRoutes from "./routes/dealRoutes.js";
+import taskRoutes from "./routes/tasksRoutes.js";
+
 import prisma from "./models/prismaClient.js";
 
 dotenv.config();
@@ -27,6 +32,10 @@ app.use("/api/v1/activities", activityRoutes);
 app.use("/api/v1/notification", notificationRoutes);
 app.use("/api/v1/history", historyRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/dashboard", dashboardRoutes);
+app.use("/api/v1/contacts", contactRoutes);
+app.use("/api/v1/deals", dealRoutes);
+app.use("/api/v1/tasks", taskRoutes);
 
 const PORT = process.env.PORT;
 
@@ -34,7 +43,6 @@ async function startServer() {
   try {
     await prisma.$connect();
     console.log("✅ Connected to PostgreSQL successfully");
-
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
