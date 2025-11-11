@@ -50,11 +50,9 @@ ALTER TABLE "activities" ADD COLUMN "type" "ActivityType" DEFAULT 'Note';
 -- 6. Convert legacy data safely
 UPDATE "activities"
 SET "type" = CASE
-  WHEN "type_tmp" ILIKE 'note' THEN 'Note'
-  WHEN "type_tmp" ILIKE 'email' THEN 'Email'
-  WHEN "type_tmp" ILIKE 'call' THEN 'Call'
-  WHEN "type_tmp" ILIKE 'meeting' THEN 'Meeting'
-  ELSE 'Note'
+  WHEN "legacy_type" = 'call' THEN 'Call'::"ActivityType"
+  WHEN "legacy_type" = 'email' THEN 'Email'::"ActivityType"
+  ELSE 'Note'::"ActivityType"
 END;
 
 -- 7. Drop the temporary column
