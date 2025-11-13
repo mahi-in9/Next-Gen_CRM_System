@@ -305,7 +305,10 @@ Contributions are welcome\! Please follow these steps:
 This project is licensed under the MIT License — you are free to use, modify, and distribute with attribution.
 
 ---
+`fullstack` • `mern` • `react` • `vite` • `tailwindcss` • `nodejs` • `express` • `postegre-sql` • `restapi` • `firebase-auth` • `next-gen-crm` • `sustainability` • `javascript` • `webapp` • `frontend` • `backend` • `vercel`
 
+
+---
 ## 📧 Contact
 
 For support or collaboration:
